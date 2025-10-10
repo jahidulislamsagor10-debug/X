@@ -1,24 +1,23 @@
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-
 module.exports = {
   config: {
     name: "imgbb",
+    aliases: ["uploadimg", "imgup"],
     version: "1.0.0",
-    hasPermssion: 0,
-    credits: "SaGor",
-    description: "Upload image to ImgBB",
+    role: 0,
+    author: "SaGor",
+    description: { en: "Upload a photo to ImgBB" },
+    longDescription: { en: "Reply to an image and use this command to upload it to ImgBB and get a link" },
     commandCategory: "Uploader",
-    usages: "imgbb [reply to photo]",
+    usages: "{pn} [reply to photo]",
     cooldowns: 5
   },
 
   onStart: async function({ api, event }) {
     const { threadID, messageID } = event;
+    const axios = require("axios");
 
     if (!event.messageReply || !event.messageReply.attachments || event.messageReply.attachments.length === 0) {
-      return api.sendMessage("Please reply to a photo.", threadID, messageID);
+      return api.sendMessage("❌ Please reply to a photo.", threadID, messageID);
     }
 
     try {
