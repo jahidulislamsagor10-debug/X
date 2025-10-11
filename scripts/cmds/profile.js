@@ -1,1 +1,33 @@
-async function onStart({ event, message, usersData, args, getLang }) { let avt; const uid1 = event.senderID; const uid2 = Object.keys(event.mentions)[0]; const uid3 = args[0] && /^\d+$/.test(args[0]) ? args[0] : null; if (event.type == "message_reply") { avt = await usersData.getAvatarUrl(event.messageReply.senderID); } else { if (!uid2) { if (uid3) { avt = await usersData.getAvatarUrl(uid3); } else { const regExCheckURL = /^(http|https):\/\/[^ "]+$/; const link = args[0]; const uid4 = link ? await global.utils.findUid(link) : null; if (regExCheckURL.test(link) && uid4) { avt = await usersData.getAvatarUrl(uid4); } else { avt = await usersData.getAvatarUrl(uid1); } } } else { avt = await usersData.getAvatarUrl(uid2); } } message.reply({ body: "", attachment: await global.utils.getStreamFromURL(avt) }); } const config = { name: "pp", aliases: ["profile"], version: "1.1", author: "Samir Œ", countDown: 5, role: 0, shortDescription: "profile image", longDescription: "profile image", category: "tools", guide: { en: " {pn} @tag" } }; module.exports = { config, onStart };
+module.exports = {
+  config: {
+    name: "profile",
+    aliases: ["pfp", "pp"],
+    version: "1.1",
+    author: "SaGor",
+    countDown: 5,
+    role: 0,
+    description: "PROFILE image",
+    category: "image",
+    guide: { en: "{pn} @tag or userID or reply to a message or provide a Facebook URL" }
+  },
+  onStart: async function ({ event, message, usersData, args }) {
+    const getAvatarUrl = async (uid) => await usersData.getAvatarUrl(uid);
+    const uid = Object.keys(event.mentions)[0] || args[0] || event.senderID;
+    let avt;
+
+    try {
+      if (event.type === "message_reply") {
+        avt = await getAvatarUrl(event.messageReply.senderID);
+      } else if (args.join(" ").includes("facebook.com")) {
+        const match = args.join(" ").match(/(\d+)/);
+        if (match) avt = await getAvatarUrl(match[0]);
+        else throw new Error("Invalid Facebook URL.");
+      } else {
+        avt = await getAvatarUrl(uid);
+      }
+      message.reply({ body: "", attachment: await global.utils.getStreamFromURL(avt) });
+    } catch (error) {
+      message.reply(`⚠️ Error: ${error.message}`);
+    }
+  }
+};
