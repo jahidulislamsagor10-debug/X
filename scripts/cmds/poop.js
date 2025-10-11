@@ -1,68 +1,69 @@
 module.exports = {
   config: {
     name: "poop",
-    version: "1.0.2",
-    hasPermssion: 0,
-    credits: "SaGor",
-    description: "💩 Put a poop on tagged friend's avatar",
-    commandCategory: "fun",
-    usages: "poop [tag someone]",
-    cooldowns: 5,
-    dependencies: {
-      "fs-extra": "",
-      "axios": "",
-      "canvas": "",
-      "jimp": "",
-      "node-superfetch": ""
+    version: "1.0.5",
+    author: "SaGor",
+    description: "💩 Make someone step in poop!",
+    category: "fun",
+    countDown: 5,
+    role: 0,
+    guide: {
+      en: "{pn} [tag someone]"
     }
   },
 
-  circle: async (image) => {
+  circle: async (imageBuffer) => {
     const jimp = require("jimp");
-    image = await jimp.read(image);
+    const image = await jimp.read(imageBuffer);
     image.circle();
     return await image.getBufferAsync("image/png");
   },
 
-  onStart: async function ({ event, api }) {
+  onStart: async function({ api, event }) {
+    const fs = require("fs-extra");
+    const Canvas = require("canvas");
+    const axios = require("axios");
+
     try {
-      const Canvas = require("canvas");
-      const request = require("node-superfetch");
-      const fs = require("fs-extra");
+      const pathCache = __dirname + "/cache/";
+      fs.ensureDirSync(pathCache);
+      const pathToilet = pathCache + "poop.png";
 
-      const pathPoop = __dirname + "/cache/poop.png";
-      if (!fs.existsSync(__dirname + "/cache")) fs.mkdirSync(__dirname + "/cache");
-
-      // Get user ID
       const id = Object.keys(event.mentions)[0] || event.senderID;
 
-      // Load background
+      // fetch avatar
+      const avatarResp = await axios.get(
+        `https://graph.facebook.com/${id}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
+        { responseType: "arraybuffer" }
+      );
+
+      const avatarCircle = await this.circle(avatarResp.data);
+
+      // create canvas
       const canvas = Canvas.createCanvas(500, 670);
       const ctx = canvas.getContext("2d");
       const background = await Canvas.loadImage("https://i.imgur.com/tIwILb4.jpeg");
       ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-      // Load avatar
-      const avatarRes = await request.get(
-        `https://graph.facebook.com/${id}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`
-      );
-      const avatar = await this.circle(avatarRes.body);
-      const avatarImg = await Canvas.loadImage(avatar);
+      const avatarImg = await Canvas.loadImage(avatarCircle);
       ctx.drawImage(avatarImg, 135, 350, 205, 205);
 
-      // Save final image
-      const imageBuffer = canvas.toBuffer();
-      fs.writeFileSync(pathPoop, imageBuffer);
+      const buffer = canvas.toBuffer();
+      fs.writeFileSync(pathToilet, buffer);
 
-      // Send
       api.sendMessage(
-        { body: "💩", attachment: fs.createReadStream(pathPoop) },
+        {
+          body: `💩 Watch out, ${event.mentions ? Object.values(event.mentions)[0].replace("@", "") : "someone"}!`,
+          attachment: fs.createReadStream(pathToilet)
+        },
         event.threadID,
-        () => fs.unlinkSync(pathPoop),
+        () => fs.unlinkSync(pathToilet),
         event.messageID
       );
-    } catch (e) {
-      return api.sendMessage("❌ Failed to generate image!", event.threadID, event.messageID);
+
+    } catch (err) {
+      console.error(err);
+      api.sendMessage("❌ Failed to generate image! Check your tags or Facebook API.", event.threadID, event.messageID);
     }
   }
 };
