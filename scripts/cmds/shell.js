@@ -1,41 +1,39 @@
 const { exec } = require('child_process');
 
-module.exports = {
- config: {
- name: "shell",
- aliases: ["sh"], // Added alias
- version: "1.0",
- author: "Samir",
- countDown: 5,
- role: 2,
- shortDescription: "Execute shell commands",
- longDescription: "",
- category: "owner",
- guide: {
- en: "{p}{n} <command>" // Removed Vietnamese guide for simplicity
- }
- },
+module.exports.config = {
+    name: "shell",
+    aliases: ["sh"],
+    version: "1.0",
+    author: "SaGor",
+    role: 2,
+    description: "Execute shell commands",
+    category: "system",
+    guide: {
+      en: "{pn} <command>",
+    },
+    coolDowns: 5
+};
 
- onStart: async function ({ args, message, event, api }) {
- const command = args.join(" ");
+module.exports.onStart = async ({ message, args }) => {
+     // const admin = ["1 admin uid"]
+    //if (!admin.includes(event.senderID)) { 
+      //  return message.reply("You do not have permission to execute shell commands.");
+   // }
 
- if (!command) {
- return message.reply("Please provide a command to execute.");
- }
+    if (!args.length) {
+        return message.reply("Please provide a command to execute.");
+    }
+    const command = args.join(' ');
 
- exec(command, (error, stdout, stderr) => {
- if (error) {
- console.error(`Error executing command: ${error}`);
- return message.reply(`An error occurred while executing the command: ${error.message}`);
- }
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            return message.reply(`Error executing command: ${error.message}`);
+        }
+        if (stderr) {
+            return message.reply(`Shell Error: ${stderr}`);
+        }
 
- if (stderr) {
- console.error(`Command execution resulted in an error: ${stderr}`);
- return message.reply(`Command execution resulted in an error: ${stderr}`);
- }
-
- console.log(`Command executed successfully:\n${stdout}`);
- message.reply(`Command executed successfully:\n${stdout}`);
- });
- }
+ const output = stdout || "Command executed successfully with no output.";
+        message.reply(`${output}`);
+    });
 };
