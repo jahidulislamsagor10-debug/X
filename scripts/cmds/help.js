@@ -1,66 +1,53 @@
+const { getPrefix } = global.utils;
+const { commands } = global.GoatBot;
+
 module.exports = {
   config: {
     name: "help",
-    aliases: ["menu", "cmd", "commands"],
-    version: "6.0",
+    version: "3.5",
     author: "SaGor",
-    countDown: 3,
+    usePrefix: false,
     role: 0,
-    shortDescription: "Show all commands or details of one command",
-    longDescription: "Displays all commands by category or detailed info for a specific command",
-    category: "system",
-    guide: { en: "{pn} [command name]" }
+    category: "info",
+    priority: 1
   },
 
-  onStart: async function ({ api, event, args }) {
-    const prefix = global.GoatBot.config.prefix;
-    const commands = global.GoatBot.commands;
+  onStart: async function ({ message, args, event, role }) {
+    const prefix = getPrefix(event.threadID);
+    const arg = args[0]?.toLowerCase();
 
-    if (args[0]) {
-      const name = args[0].toLowerCase();
-      const cmd =
-        commands.get(name) ||
-        [...commands.values()].find(c => c.config.aliases?.includes(name));
+    if (!arg) {
+      const listByCategory = {};
+      Array.from(commands.entries())
+        .filter(([_, cmd]) => cmd.config.role <= role)
+        .forEach(([name, cmd]) => {
+          const cat = cmd.config.category || "Uncategorized";
+          if (!listByCategory[cat]) listByCategory[cat] = [];
+          listByCategory[cat].push(name);
+        });
 
-      if (!cmd)
-        return api.sendMessage(`❌ Command "${name}" not found!`, event.threadID, event.messageID);
-
-      const info = cmd.config;
-      let msg = `╭─❖🌟 ${info.name.toUpperCase()} 🌟❖─╮\n\n`;
-      msg += `👑 Author  : ${info.author}\n`;
-      msg += `⚙️ Version : ${info.version}\n`;
-      msg += `📂 Category: ${info.category}\n`;
-      msg += `🕒 Cooldown: ${info.countDown || 3}s\n`;
-      msg += `🎯 Role    : ${info.role}\n`;
-      msg += `💬 Desc    : ${info.shortDescription}\n`;
-      msg += `💡 Usage   : ${prefix}${info.guide?.en || info.name}\n`;
-      msg += info.aliases?.length ? `🔁 Aliases : ${info.aliases.join(", ")}\n` : "";
-      msg += `\n╰────────• 🌸 •──────────╯\n✨ Made by: SaGor`;
-      return api.sendMessage(msg, event.threadID, event.messageID);
+      let msg = "";
+      for (let cat in listByCategory) {
+        msg += `\n${cat.toUpperCase()}\n`;
+        listByCategory[cat].forEach(cmd => msg += `• ${cmd}\n`);
+      }
+      return message.reply(msg.trim());
     }
 
-    let cats = {};
-    for (const [n, c] of commands.entries()) {
-      const cat = c.config.category || "Other";
-      if (!cats[cat]) cats[cat] = [];
-      cats[cat].push(c.config.name);
-    }
+    const cmd = commands.get(arg) || commands.get(global.GoatBot.aliases.get(arg));
+    if (!cmd || cmd.config.role > role) return message.reply(`✘ Command "${arg}" not found.`);
 
-    let msg = `╭━━━━━✨ 𝗕𝗢𝗧 𝗛𝗘𝗟𝗣 ✨━━━━━╮\n`;
-    msg += `┃ ⚡ Prefix       : ${prefix}\n`;
-    msg += `┃ 📜 Total Cmds  : ${commands.size}\n`;
-    msg += `╰━━━━━━━━━━━━━━━━━━━━━╯\n\n`;
-
-    for (const [cat, cmds] of Object.entries(cats)) {
-      msg += `🌈  ┏━━━ ${cat.toUpperCase()} [${cmds.length}] ━━━┓\n`;
-      msg += `┃ ${cmds.sort().map(c=>` • ${c}`).join(" | ")}\n`;
-      msg += `┗━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
-    }
-
-    msg += `💡 Usage   : ${prefix}help [command]\n`;
-    msg += `🧩 Example : ${prefix}help ai\n`;
-    msg += `\n✨ Crafted with ❤️ by SaGor`;
-
-    api.sendMessage(msg, event.threadID, event.messageID);
+    const info = cmd.config;
+    let msg = `╭─❖🌟 ${info.name.toUpperCase()} 🌟❖─╮\n\n`;
+    msg += `👑 Author  : ${info.author}\n`;
+    msg += `⚙️ Version : ${info.version}\n`;
+    msg += `📂 Category: ${info.category}\n`;
+    msg += `🕒 Cooldown: ${info.countDown || info.cooldowns || 3}s\n`;
+    msg += `🎯 Role    : ${info.role}\n`;
+    msg += `💬 Desc    : ${info.shortDescription || info.description || "No description"}\n`;
+    msg += `💡 Usage   : ${prefix}${info.guide?.en || info.usages || info.name}\n`;
+    msg += info.aliases?.length ? `🔁 Aliases : ${info.aliases.join(", ")}\n` : "";
+    msg += `\n╰────────• 🌸 •──────────╯`;
+    return message.reply(msg);
   }
 };
